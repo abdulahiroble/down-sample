@@ -12,7 +12,7 @@ export class ChartComponent {
   @Input() timeseriesData: [number, number][] = [];
   @Input() downsample: boolean = false;
 
-  constructor() {}
+  constructor() { }
 
   chartInitialized(chart: Highcharts.Chart): void {
     const data: [number, number][] = !this.downsample
@@ -70,12 +70,15 @@ export class ChartComponent {
     const plotWidth: number = 548;
 
     // <-- Modify start
-    const downsampledData: [number, number][] = dataToDownsample;
+    let downsampledData: [number, number][] = dataToDownsample;
+
+    var limited = downsampledData.filter((val, i) => i < 1000)
+
     // --> Modify end
 
     console.timeEnd('returnDownsampledData');
     console.log(
-      `Input ${this.timeseriesData.length}, Output ${downsampledData.length}`
+      `Input ${this.timeseriesData.length}, Output ${limited.length}`
     );
     return downsampledData;
   }
