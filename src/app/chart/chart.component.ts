@@ -63,23 +63,69 @@ export class ChartComponent {
     },
   };
 
-  /** Modify and extend the code where indicated. You're also allowed to add utility functions below.*/
   private returnDownsampledData(): [number, number][] {
     console.time('returnDownsampledData');
     const dataToDownsample: [number, number][] = [...this.timeseriesData];
-    const plotWidth: number = 548;
 
-    // <-- Modify start
-    let downsampledData: [number, number][] = dataToDownsample;
+    if (dataToDownsample.length <= 1000) {
+      return dataToDownsample;
+    }
 
-    var limited = downsampledData.filter((val, i) => i < 1000)
-
-    // --> Modify end
+    const sampledData = this.largestTriangleThreeBuckets(dataToDownsample, 1000);
 
     console.timeEnd('returnDownsampledData');
-    console.log(
-      `Input ${this.timeseriesData.length}, Output ${limited.length}`
-    );
-    return downsampledData;
+    console.log(`Input ${this.timeseriesData.length}, Output ${sampledData.length}`);
+    return sampledData;
+  }
+
+  private largestTriangleThreeBuckets(data: [number, number][], threshold: number): [number, number][] {
+    const dataLength = data.length;
+    if (threshold >= dataLength || threshold === 0) {
+      return data;
+    }
+
+    const sampled = [data[0]];
+
+    const every = (dataLength - 2) / (threshold - 2);
+    let a = 0;
+
+    for (let i = 0; i < threshold - 2; i++) {
+      const avgRangeStart = Math.floor((i + 1) * every) + 1;
+      const avgRangeEnd = Math.min(Math.floor((i + 2) * every) + 1, dataLength);
+      const avgRange = data.slice(avgRangeStart, avgRangeEnd);
+
+      const [avgX, avgY] = avgRange.reduce(
+        ([sumX, sumY], [x, y]) => [sumX + x, sumY + y],
+        [0, 0]
+      ).map(sum => sum / avgRange.length);
+
+      const rangeOffs = Math.floor(i * every) + 1;
+      const rangeTo = Math.floor((i + 1) * every) + 1;
+      const pointA = data[a];
+      const [pointAX, pointAY] = pointA;
+
+      let maxArea = -1;
+      let maxAreaPoint: [number, number] | null = null;
+      let nextA = a;
+
+      for (let k = rangeOffs; k < rangeTo; k++) {
+        const point = data[k];
+        const area = Math.abs((pointAX - avgX) * (point[1] - pointAY) - (pointAX - point[0]) * (avgY - pointAY)) * 0.5;
+        if (area > maxArea) {
+          maxArea = area;
+          maxAreaPoint = point;
+          nextA = k;
+        }
+      }
+
+      if (maxAreaPoint) {
+        sampled.push(maxAreaPoint);
+        a = nextA;
+      }
+    }
+
+    sampled.push(data[dataLength - 1]);
+
+    return sampled;
   }
 }
