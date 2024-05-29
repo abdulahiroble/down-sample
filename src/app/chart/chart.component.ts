@@ -30,18 +30,18 @@ export class ChartComponent {
       text: '',
     },
     xAxis: {
-      type: 'datetime', // Use datetime type for time series
+      type: 'datetime',
       labels: {
-        enabled: false, // Disable x-axis labels
+        enabled: false,
       },
     },
     yAxis: {
       title: {
-        text: null, // Remove y-axis title
+        text: null,
       },
     },
     legend: {
-      enabled: false, // Disable the legend
+      enabled: false,
     },
     series: [
       {
@@ -53,7 +53,7 @@ export class ChartComponent {
       series: {
         states: {
           hover: {
-            lineWidthPlus: 0, // Prevent line from growing bold on hover
+            lineWidthPlus: 0,
           },
         },
       },
@@ -86,12 +86,12 @@ export class ChartComponent {
 
     const sampled = [data[0]];
 
-    const every = (dataLength - 2) / (threshold - 2);
+    const calculateBucketSize = (dataLength - 2) / (threshold - 2);
     let a = 0;
 
     for (let i = 0; i < threshold - 2; i++) {
-      const avgRangeStart = Math.floor((i + 1) * every) + 1;
-      const avgRangeEnd = Math.min(Math.floor((i + 2) * every) + 1, dataLength);
+      const avgRangeStart = Math.floor((i + 1) * calculateBucketSize) + 1;
+      const avgRangeEnd = Math.min(Math.floor((i + 2) * calculateBucketSize) + 1, dataLength);
       const avgRange = data.slice(avgRangeStart, avgRangeEnd);
 
       const [avgX, avgY] = avgRange.reduce(
@@ -99,24 +99,23 @@ export class ChartComponent {
         [0, 0]
       ).map(sum => sum / avgRange.length);
 
-      const rangeOffs = Math.floor(i * every) + 1;
-      const rangeTo = Math.floor((i + 1) * every) + 1;
+      const rangeOffs = Math.floor(i * calculateBucketSize) + 1;
+      const rangeTo = Math.floor((i + 1) * calculateBucketSize) + 1;
       const pointA = data[a];
       const [pointAX, pointAY] = pointA;
 
-      let maxArea = -1;
-      let maxAreaPoint: [number, number] | null = null;
-      let nextA = a;
+      const result = data.slice(rangeOffs, rangeTo).reduce(
+        (acc: { maxArea: number, maxAreaPoint: [number, number] | null, nextA: number }, point, index) => {
+          const area = Math.abs((pointAX - avgX) * (point[1] - pointAY) - (pointAX - point[0]) * (avgY - pointAY)) * 0.5;
+          if (area > acc.maxArea) {
+            return { maxArea: area, maxAreaPoint: point, nextA: index + rangeOffs };
+          }
+          return acc;
+        },
+        { maxArea: -1, maxAreaPoint: null, nextA: a }
+      );
 
-      for (let k = rangeOffs; k < rangeTo; k++) {
-        const point = data[k];
-        const area = Math.abs((pointAX - avgX) * (point[1] - pointAY) - (pointAX - point[0]) * (avgY - pointAY)) * 0.5;
-        if (area > maxArea) {
-          maxArea = area;
-          maxAreaPoint = point;
-          nextA = k;
-        }
-      }
+      const { maxAreaPoint, nextA } = result;
 
       if (maxAreaPoint) {
         sampled.push(maxAreaPoint);
